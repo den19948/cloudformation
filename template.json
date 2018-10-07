@@ -1,0 +1,190 @@
+{
+    "Parameters": {
+        "KeyName": {
+            "Description": "Key",
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        },
+        "VpcId": {
+            "Type": "AWS::EC2::VPC::Id",
+            "Description": "VPC",
+            "ConstraintDescription": "create VPC"
+        },
+        "Subnets": {
+            "Type": "List<AWS::EC2::Subnet::Id>",
+            "Description": "subnets",
+            "ConstraintDescription": "subnets"
+        },
+        "InstanceType": {
+            "Description": "WebServer EC2 instance type",
+            "Type": "String",
+            "Default": "t2.micro",
+            "AllowedValues": [
+                "t2.micro"
+            ]
+        },
+        "DataBase": {
+            "Default": "wordpress",
+            "Description": "Name BD",
+            "Type": "String",
+            "MinLength": "1",
+            "MaxLength": "64",
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "first must be a letter"
+        },
+        "User": {
+            "Default": "wordpress",
+            "Description": "User DB",
+            "Type": "String",
+            "MinLength": "1",
+            "MaxLength": "64",
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "first must be a letter"
+        },
+        "Password": {
+            "NoEcho": "true",
+            "Description": "password",
+            "Type": "String",
+            "MinLength": "8",
+            "MaxLength": "32",
+            "AllowedPattern": "[a-zA-Z0-9]*"
+        }
+    },
+    "Mappings": {
+        "AWSInstanceType2Arch": {
+            "t2.micro": {
+                "Arch": "HVM64"
+            }
+        },
+        "AWSInstanceType2NATArch": {
+            "t2.micro": {
+                "Arch": "NATHVM64"
+            }
+        },
+        "AWSRegionArch2AMI": {
+            "us-east-2": {
+                "HVM64": "ami-0552e3455b9bc8d50",
+                "NATHVM64": "ami-0552e3455b9bc8d50"
+            }
+        }
+    },
+    "Resources": {
+        "WebServerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable ssh + http",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 22,
+                        "ToPort": 22,
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 80,
+                        "ToPort": 80,
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VpcId"
+                }
+            }
+        },
+        "DBEC2SecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Open port 3306",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3306",
+                        "ToPort": "3306",
+                        "SourceSecurityGroupId": {
+                            "Ref": "WebServerSecurityGroup"
+                        }
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VpcId"
+                }
+            }
+        },
+        "DBSubnetGroup": {
+            "Type": "AWS::RDS::DBSubnetGroup",
+            "Properties": {
+                "DBSubnetGroupDescription": "subnets",
+                "SubnetIds": {
+                    "Ref": "Subnets"
+                }
+            }
+        },
+        "MyDB": {
+            "Type": "AWS::RDS::DBInstance",
+            "Properties": {
+                "DBName": {
+                    "Ref": "DataBase"
+                },
+                "AllocatedStorage": "20",
+                "DBInstanceClass": "db.t2.micro",
+                "Engine": "MySQL",
+                "EngineVersion": "5.7.22",
+                "MasterUsername": {
+                    "Ref": "User"
+                },
+                "MasterUserPassword": {
+                    "Ref": "Password"
+                },
+                "DBSubnetGroupName": {
+                    "Ref": "DBSubnetGroup"
+                },
+                "VPCSecurityGroups": [
+                    {
+                        "Fn::GetAtt": [
+                            "DBEC2SecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ]
+            }
+        },
+        "Web": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Ref": "WebServerSecurityGroup"
+                    }
+                ],
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "AWSRegionArch2AMI",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        {
+                            "Fn::FindInMap": [
+                                "AWSInstanceType2Arch",
+                                {
+                                    "Ref": "InstanceType"
+                                },
+                                "Arch"
+                            ]
+                        }
+                    ]
+                },
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Sub": "#!/bin/bash\nPUBLIC_IP=`curl http://169.254.169.254/latest/meta-data/public-ipv4`\napt-get update\napt-get -y install apache2 php php-mysql libapache2-mod-php\ncd /tmp/\nwget https://wordpress.org/latest.tar.gz\nsudo tar xzf latest.tar.gz -C /var/www/\nsudo chown -R www-data:www-data /var/www/\nsudo sed -i 's/html/wordpress/' /etc/apache2/sites-enabled/000-default.conf\nsudo service apache2 restart\ncurl --data \"dbname=!Ref 'DBName'&uname=!Ref 'DBUser'&pwd=!Ref 'DBPassword'&dbhost=!GetAtt 'MyDB.Endpoint.Address'&prefix=wp_&language=&submit=Submit\" http://$PUBLIC_IP/wp-admin/setup-config.php?step=2  \n"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -181,7 +181,7 @@
                 },
                 "UserData": {
                     "Fn::Base64": {
-                        "Fn::Sub": "#!/bin/bash\nPUBLIC_IP=`curl http://169.254.169.254/latest/meta-data/public-ipv4`\napt-get update\napt-get -y install apache2 php php-mysql libapache2-mod-php\ncd /tmp/\nwget https://wordpress.org/latest.tar.gz\nsudo tar xzf latest.tar.gz -C /var/www/\nsudo chown -R www-data:www-data /var/www/\nsudo sed -i 's/html/wordpress/' /etc/apache2/sites-enabled/000-default.conf\nsudo service apache2 restart\ncurl --data \"dbname=!Ref 'DBName'&uname=!Ref 'DBUser'&pwd=!Ref 'DBPassword'&dbhost=!GetAtt 'MyDB.Endpoint.Address'&prefix=wp_&language=&submit=Submit\" http://$PUBLIC_IP/wp-admin/setup-config.php?step=2  \n"
+                        "Fn::Sub": "#!/bin/bash\nPUBLIC_IP=`curl http://169.254.169.254/latest/meta-data/public-ipv4`\napt-get update\napt-get -y install apache2 php php-mysql sl libapache2-mod-php\ncd /tmp/\nwget https://wordpress.org/latest.tar.gz\nsudo tar xzf latest.tar.gz -C /var/www/\nsudo chown -R www-data:www-data /var/www/\nsudo sed -i 's/html/wordpress/' /etc/apache2/sites-enabled/000-default.conf\nsudo service apache2 restart\ncurl --data \"dbname=!Ref 'DBName'&uname=!Ref 'DBUser'&pwd=!Ref 'DBPassword'&dbhost=!GetAtt 'MyDB.Endpoint.Address'&prefix=wp_&language=&submit=Submit\" http://$PUBLIC_IP/wp-admin/setup-config.php?step=2  \n"
                     }
                 }
             }

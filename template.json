@@ -22,33 +22,6 @@
                 "t2.micro"
             ]
         },
-        "DataBase": {
-            "Default": "wordpress",
-            "Description": "Name BD",
-            "Type": "String",
-            "MinLength": "1",
-            "MaxLength": "64",
-            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
-            "ConstraintDescription": "first must be a letter"
-        },
-        "User": {
-            "Default": "wordpress",
-            "Description": "User DB",
-            "Type": "String",
-            "MinLength": "1",
-            "MaxLength": "64",
-            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
-            "ConstraintDescription": "first must be a letter"
-        },
-        "Password": {
-            "NoEcho": "true",
-            "Description": "password",
-            "Type": "String",
-            "MinLength": "8",
-            "MaxLength": "32",
-            "AllowedPattern": "[a-zA-Z0-9]*"
-        }
-    },
     "Mappings": {
         "AWSInstanceType2Arch": {
             "t2.micro": {
@@ -117,35 +90,6 @@
                 "SubnetIds": {
                     "Ref": "Subnets"
                 }
-            }
-        },
-        "MyDB": {
-            "Type": "AWS::RDS::DBInstance",
-            "Properties": {
-                "DBName": {
-                    "Ref": "DataBase"
-                },
-                "AllocatedStorage": "20",
-                "DBInstanceClass": "db.t2.micro",
-                "Engine": "MySQL",
-                "EngineVersion": "5.7.22",
-                "MasterUsername": {
-                    "Ref": "User"
-                },
-                "MasterUserPassword": {
-                    "Ref": "Password"
-                },
-                "DBSubnetGroupName": {
-                    "Ref": "DBSubnetGroup"
-                },
-                "VPCSecurityGroups": [
-                    {
-                        "Fn::GetAtt": [
-                            "DBEC2SecurityGroup",
-                            "GroupId"
-                        ]
-                    }
-                ]
             }
         },
         "Web": {
